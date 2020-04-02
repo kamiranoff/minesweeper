@@ -3,4 +3,4 @@ project(MineSweeper)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(MineSweeper main.cpp MineField/MineField.cpp MineField/MineField.h)
+add_executable(MineSweeper main.cpp MineField/MineField.cpp MineField/MineField.h procedural/MineSweeper.cpp procedural/MineSweeper.h)
