@@ -6,7 +6,7 @@
 #include <random>
 
 #define BOMB  " * ";
-#define UNDISCOVERED_CELL "⬜";
+#define UNDISCOVERED_CELL " + ";
 #define FREE_CELL "   ";
 #define UP 'w';
 #define DOWN 's';
@@ -110,13 +110,15 @@ void trigger_press(int line, int col) {
         cout << "GAME OVER!\n";
         for (int line = 0; line < lines; ++line) {
             for (int col = 0; col < columns; ++col) {
-                if(board[line][col] == bomb) {
+                if (board[line][col] == bomb) {
                     cout << bomb;
                 }
             }
         }
-    } else {
+    } else if (board[line][col] == " 0 ") {
         user_board[line][col] = FREE_CELL;
+    } else {
+        user_board[line][col] = board[line][col];
     }
     cout << '\n';
 }
@@ -146,7 +148,7 @@ void process_command(char command) {
         return;
     }
 
-    if(user_board[user_line][user_col] == user_position) {
+    if (user_board[user_line][user_col] == user_position) {
         user_board[user_line][user_col] = UNDISCOVERED_CELL;
     }
     user_line = next_line;
