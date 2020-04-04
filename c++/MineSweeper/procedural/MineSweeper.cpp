@@ -6,31 +6,31 @@
 #include <random>
 
 #define BOMB  " * ";
-#define UNDISCOVERED_CELL " + ";
+#define UNDISCOVERED_CELL " @ ";
 #define FREE_CELL "   ";
 #define UP 'w';
 #define DOWN 's';
 #define LEFT 'a';
 #define RIGHT 'd';
-#define USER_POSITION " + ";
+#define USER_POSITION " X ";
 #define PRESS 'p';
 
 using namespace std;
 
-int lines = 9, columns = 9, bombs = 10;
+void trigger_press(int, int);
+
+int lines = 9, columns = 9, bombs = 9;
 int is_game_finished = 0;
 string board[100][100];
 string user_board[100][100];
+bool uncovered[100][100];
+
 int user_line = 0;
 int user_col = 0;
-
-int compute_neighbours(int line, int col);
-
 
 bool is_bomb(int line, int col) {
     return board[line][col] == BOMB;
 }
-
 
 bool is_inside_field(int line, int col) {
     return line >= 0 && line < lines && col >= 0 && col < columns;
@@ -70,24 +70,6 @@ string get_neighbour_bomb_count(int line, int col) {
     return " " + to_string(num_bombs) + " ";
 }
 
-void init_board() {
-    for (int line = 0; line < lines; ++line) {
-        for (int col = 0; col < columns; ++col) {
-            board[line][col] = user_board[line][col] = UNDISCOVERED_CELL;
-        }
-    }
-    place_bombs();
-
-    for (int line = 0; line < lines; ++line) {
-        for (int col = 0; col < columns; ++col) {
-            bool isBomb = is_bomb(line, col);
-            if (!isBomb) {
-                board[line][col] = get_neighbour_bomb_count(line, col);
-            }
-        }
-    }
-}
-
 void print_board() {
     for (int line = 0; line < lines; ++line) {
         for (int col = 0; col < columns; ++col) {
@@ -97,30 +79,64 @@ void print_board() {
     }
 }
 
-void trigger_press(int line, int col) {
-    char press = PRESS;
+void handle_game_over() {
     string bomb = BOMB;
-    string p(1, press);
-    if (user_board[line][col] == p) {
+
+    is_game_finished = 1;
+
+    cout << '\n';
+    cout << "GAME OVER! GAME OVER! GAME OVER!\n";
+    cout << "GAME OVER! GAME OVER! GAME OVER!\n";
+    cout << "GAME OVER! GAME OVER! GAME OVER!\n";
+    for (int line = 0; line < lines; ++line) {
+        for (int col = 0; col < columns; ++col) {
+            if (board[line][col] == bomb) {
+                cout << bomb;
+            } else {
+                cout << user_board[line][col];
+            }
+        }
+        cout << '\n';
+
+    }
+    cout << "GAME OVER! GAME OVER! GAME OVER!\n";
+    cout << "GAME OVER! GAME OVER! GAME OVER!\n";
+    cout << "GAME OVER! GAME OVER! GAME OVER!\n";
+}
+
+void get_empty_neighbours(int line, int col) {
+    for (int line_offset = -1; line_offset <= 1; ++line_offset) {
+        for (int col_offset = -1; col_offset <= 1; ++col_offset) {
+            int next_line = line + line_offset;
+            int next_column = col + col_offset;
+            if (is_inside_field(next_line, next_column)) {
+                trigger_press(next_line, next_column);
+            }
+        }
+    }
+}
+
+void trigger_press(int line, int col) {
+    string undiscovered_cell = UNDISCOVERED_CELL;
+    string bomb = BOMB;
+    string userPos = USER_POSITION;
+    if (uncovered[line][col]) {
         return;
     }
 
-    if (board[line][col] == bomb) {
-        is_game_finished = 1;
-        cout << "GAME OVER!\n";
-        for (int line = 0; line < lines; ++line) {
-            for (int col = 0; col < columns; ++col) {
-                if (board[line][col] == bomb) {
-                    cout << bomb;
-                }
-            }
-        }
-    } else if (board[line][col] == " 0 ") {
+    bool is_press_bomb = board[line][col] == bomb;
+    bool is_press_empty_cell = board[line][col] == " 0 ";
+
+    if (is_press_bomb) {
+        handle_game_over();
+    } else if (is_press_empty_cell) {
+        uncovered[line][col] = true;
         user_board[line][col] = FREE_CELL;
+        get_empty_neighbours(line, col);
     } else {
+        uncovered[line][col] = true;
         user_board[line][col] = board[line][col];
     }
-    cout << '\n';
 }
 
 void process_command(char command) {
@@ -130,6 +146,7 @@ void process_command(char command) {
     char right = RIGHT;
     char press = PRESS;
     string user_position = USER_POSITION;
+    string undiscovered_cell = UNDISCOVERED_CELL;
 
     int next_line = user_line;
     int next_col = user_col;
@@ -148,8 +165,12 @@ void process_command(char command) {
         return;
     }
 
-    if (user_board[user_line][user_col] == user_position) {
-        user_board[user_line][user_col] = UNDISCOVERED_CELL;
+    if (!uncovered[user_line][user_col]) {
+        user_board[user_line][user_col] = undiscovered_cell;
+    } else if (board[user_line][user_col] == " 0 ") {
+        user_board[user_line][user_col] = "   ";
+    } else {
+        user_board[user_line][user_col] = board[user_line][user_col];
     }
     user_line = next_line;
     user_col = next_col;
@@ -160,12 +181,53 @@ void process_command(char command) {
     }
 }
 
+void place_neighbours() {
+    for (int line = 0; line < lines; ++line) {
+        for (int col = 0; col < columns; ++col) {
+            bool isBomb = is_bomb(line, col);
+            if (!isBomb) {
+                board[line][col] = get_neighbour_bomb_count(line, col);
+            }
+        }
+    }
+}
+
+void place_undiscovered_cells() {
+    for (int line = 0; line < lines; ++line) {
+        for (int col = 0; col < columns; ++col) {
+            board[line][col] = user_board[line][col] = UNDISCOVERED_CELL;
+        }
+    }
+}
+
+void init_board() {
+    place_undiscovered_cells();
+    place_bombs();
+    place_neighbours();
+}
+
 void start_game() {
     user_line = user_col = 0;
     is_game_finished = 0;
     init_board();
     user_board[user_line][user_col] = USER_POSITION;
 
+}
+
+bool check_is_game_finished() {
+    int covered = 0;
+    for (int line = 0; line < lines; ++line) {
+        for (int col = 0; col < columns; ++col) {
+            covered += 1 - uncovered[line][col];
+        }
+    }
+    if (covered == bombs) {
+        cout << "YOU WIN";
+        cout << "\n";
+        return 1;
+    }
+
+    return false;
 }
 
 void start() {
@@ -177,5 +239,6 @@ void start() {
         cout << "Input command: ";
         cin >> command;
         process_command(command);
+        is_game_finished = check_is_game_finished();
     }
 }
